@@ -1,0 +1,161 @@
+version: '3.5'
+services:
+  zabbix-server:
+    container_name: zabbix-server
+    image: zabbix/zabbix-server-mysql:ubuntu-5.0.19
+    ports:
+      - '10051:10051'
+    volumes:
+      - './zabbix/alertscripts:/usr/lib/zabbix/alertscripts'
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 20000
+        hard: 40000
+    deploy:
+      resources:
+        limits:
+          cpus: '0.70'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    environment:
+      - DB_SERVER_HOST=mysql
+      - MYSQL_DATABASE=zabbix
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=zabbix
+    links:
+      - mysql
+    depends_on:
+      - mysql
+    networks:
+      network-zabbix-grafana:
+        ipv4_address: 172.18.0.1
+    stop_grace_period: 30s
+    restart: always
+
+  zabbix-frontend:
+    container_name: zabbix-frontend
+    image: zabbix/zabbix-web-apache-mysql:ubuntu-5.0.19
+    ports:
+      - '80:8080'
+      - '443:8443'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.70'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    environment:
+      - DB_SERVER_HOST=mysql
+      - MYSQL_DATABASE=zabbix
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=zabbix
+      - PHP_TZ=Europe/Paris
+    links:
+      - mysql
+    depends_on:
+      - mysql
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      network-zabbix-grafana:
+        ipv4_address: 172.18.0.2
+    stop_grace_period: 10s
+    restart: always
+
+  zabbix-agent:
+    container_name: zabbix-agent
+    image: zabbix/zabbix-agent2:ubuntu-5.0.19
+    ports:
+      - '10050:10050'
+    links:
+      - zabbix-server
+    volumes:
+      - /var/run:/var/run
+    environment:
+      - ZBX_HOSTNAME=Zabbix server
+      - ZBX_SERVER_HOST=172.18.0.1
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+      mode: global
+    privileged: true
+    user: root
+    stop_grace_period: 5s
+    networks:
+      network-zabbix-grafana:
+        ipv4_address: 172.18.0.5
+    restart: always
+
+  mysql:
+    container_name: mysql
+    image: mysql:5.7
+    ports:
+      - '3306:3306'
+    command:
+      - mysqld
+      - --character-set-server=utf8mb3
+      - --collation-server=utf8mb3_bin
+    volumes:
+      - './zabbix/mysql:/var/lib/data'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.70'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_pwd
+      - MYSQL_DATABASE=zabbix
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=zabbix
+    stop_grace_period: 1m
+    networks:
+      network-zabbix-grafana:
+        ipv4_address: 172.18.0.3
+    restart: always
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
+    ports:
+      - '3000:3000'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.70'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=zabbix
+      - GF_INSTALL_PLUGINS=alexanderzobnin-zabbix-app
+      - GF_SERVER_PROTOCOL=http
+    networks:
+      network-zabbix-grafana:
+        ipv4_address: 172.18.0.4
+    restart: always
+
+networks:
+  network-zabbix-grafana:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.0.0/24
+          gateway: 172.18.0.254
