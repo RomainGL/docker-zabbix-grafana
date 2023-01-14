@@ -56,7 +56,7 @@ For installation we need:
 
 1) Clone repo:
 ```
-git clone https://github.com/akmalovaa/zabbix-docker.git
+git clone https://github.com/RomainGL/docker-zabbix-grafana.git
 cd docker-zabbix-grafana
 ```
 
