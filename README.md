@@ -35,10 +35,10 @@ Following the creation of practical work, we needed a ready-to-use work environm
 ## Built With
 
 - Zabbix Server 5.0.19
-- Zabbix Frontend NGINX 5.0.19
+- Zabbix Frontend Apache 5.0.19
 - Zabbix Agent2 5.0.19
 - MySQL 5.7
-- Grafana 9.3.2
+- Grafana 9.3.6
 
 ## Getting Started
 
@@ -74,14 +74,14 @@ docker-compose logs --tail=1 -f
 ### default login
 1) Zabbix:
 ```
-http://localhost/80
+http://localhost:80
 Username = Admin
 Password = zabbix
 ```
 
 2) Grafana:
 ```
-http://localhost/3000
+http://localhost:3000
 Username = admin
 Password = zabbix
 ```
